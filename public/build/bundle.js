@@ -1532,11 +1532,11 @@ var app = (function () {
     			t4 = space();
     			create_component(card.$$.fragment);
     			attr_dev(h1, "class", "todo__heading svelte-5g5k24");
-    			add_location(h1, file, 23, 8, 569);
-    			add_location(button, file, 24, 8, 623);
+    			add_location(h1, file, 23, 8, 592);
+    			add_location(button, file, 24, 8, 647);
     			attr_dev(div, "class", "todo__wrapper svelte-5g5k24");
-    			add_location(div, file, 22, 4, 533);
-    			add_location(main, file, 21, 0, 522);
+    			add_location(div, file, 22, 4, 555);
+    			add_location(main, file, 21, 0, 543);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
