@@ -70,6 +70,9 @@ var app = (function () {
     function set_input_value(input, value) {
         input.value = value == null ? '' : value;
     }
+    function toggle_class(element, name, toggle) {
+        element.classList[toggle ? 'add' : 'remove'](name);
+    }
     function custom_event(type, detail, { bubbles = false, cancelable = false } = {}) {
         const e = document.createEvent('CustomEvent');
         e.initCustomEvent(type, bubbles, cancelable, detail);
@@ -460,6 +463,7 @@ var app = (function () {
     const file$1 = "src\\Modal.svelte";
 
     function create_fragment$1(ctx) {
+    	let div;
     	let form;
     	let input0;
     	let t0;
@@ -471,6 +475,7 @@ var app = (function () {
 
     	const block = {
     		c: function create() {
+    			div = element("div");
     			form = element("form");
     			input0 = element("input");
     			t0 = space();
@@ -478,20 +483,28 @@ var app = (function () {
     			t1 = space();
     			button = element("button");
     			button.textContent = "Add Todo Item";
+    			attr_dev(input0, "class", "todoForm__titleInput svelte-1qpoly2");
     			attr_dev(input0, "type", "text");
     			attr_dev(input0, "placeholder", "Todo Title");
-    			add_location(input0, file$1, 19, 4, 414);
+    			add_location(input0, file$1, 22, 8, 537);
+    			attr_dev(input1, "class", "todoForm__descriptionInput svelte-1qpoly2");
     			attr_dev(input1, "type", "text");
     			attr_dev(input1, "placeholder", "Todo Description");
-    			add_location(input1, file$1, 20, 4, 483);
-    			add_location(button, file$1, 21, 4, 564);
-    			add_location(form, file$1, 18, 0, 402);
+    			add_location(input1, file$1, 23, 8, 639);
+    			attr_dev(button, "class", "todoForm__submitBtn svelte-1qpoly2");
+    			add_location(button, file$1, 24, 8, 759);
+    			attr_dev(form, "class", "todoForm svelte-1qpoly2");
+    			add_location(form, file$1, 21, 4, 504);
+    			attr_dev(div, "class", "todoForm--backDrop svelte-1qpoly2");
+    			toggle_class(div, "todoForm__active", /*isVisible*/ ctx[2]);
+    			add_location(div, file$1, 20, 0, 431);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, form, anchor);
+    			insert_dev(target, div, anchor);
+    			append_dev(div, form);
     			append_dev(form, input0);
     			set_input_value(input0, /*title*/ ctx[0]);
     			append_dev(form, t0);
@@ -502,10 +515,10 @@ var app = (function () {
 
     			if (!mounted) {
     				dispose = [
-    					listen_dev(input0, "input", /*input0_input_handler*/ ctx[4]),
-    					listen_dev(input1, "input", /*input1_input_handler*/ ctx[5]),
-    					listen_dev(button, "click", prevent_default(/*click_handler*/ ctx[3]), false, true, false, false),
-    					listen_dev(button, "click", /*formSubmit*/ ctx[2], false, false, false, false)
+    					listen_dev(input0, "input", /*input0_input_handler*/ ctx[5]),
+    					listen_dev(input1, "input", /*input1_input_handler*/ ctx[6]),
+    					listen_dev(button, "click", prevent_default(/*click_handler*/ ctx[4]), false, true, false, false),
+    					listen_dev(button, "click", /*formSubmit*/ ctx[3], false, false, false, false)
     				];
 
     				mounted = true;
@@ -523,7 +536,7 @@ var app = (function () {
     		i: noop,
     		o: noop,
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(form);
+    			if (detaching) detach_dev(div);
     			mounted = false;
     			run_all(dispose);
     		}
@@ -544,6 +557,7 @@ var app = (function () {
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots('Modal', slots, []);
     	const dispatch = createEventDispatcher();
+    	let isVisible = true;
     	let { title } = $$props;
     	let { description } = $$props;
 
@@ -595,12 +609,14 @@ var app = (function () {
     	$$self.$capture_state = () => ({
     		createEventDispatcher,
     		dispatch,
+    		isVisible,
     		title,
     		description,
     		formSubmit
     	});
 
     	$$self.$inject_state = $$props => {
+    		if ('isVisible' in $$props) $$invalidate(2, isVisible = $$props.isVisible);
     		if ('title' in $$props) $$invalidate(0, title = $$props.title);
     		if ('description' in $$props) $$invalidate(1, description = $$props.description);
     	};
@@ -612,6 +628,7 @@ var app = (function () {
     	return [
     		title,
     		description,
+    		isVisible,
     		formSubmit,
     		click_handler,
     		input0_input_handler,
