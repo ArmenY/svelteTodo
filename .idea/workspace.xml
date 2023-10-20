@@ -4,7 +4,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7e8b284a-3a35-4c18-b290-18e3a67d45db" name="Changes" comment="" />
+    <list default="true" id="7e8b284a-3a35-4c18-b290-18e3a67d45db" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/src/Card.svelte" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/TodoForm.svelte" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/build/bundle.css" beforeDir="false" afterPath="$PROJECT_DIR$/public/build/bundle.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/build/bundle.js" beforeDir="false" afterPath="$PROJECT_DIR$/public/build/bundle.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/build/bundle.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/public/build/bundle.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/App.svelte" beforeDir="false" afterPath="$PROJECT_DIR$/src/App.svelte" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Modal.svelte" beforeDir="false" afterPath="$PROJECT_DIR$/src/Modal.svelte" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -21,6 +30,10 @@
             <RecentBranchesForRepo>
               <option name="branches">
                 <list>
+                  <RecentBranch>
+                    <option name="branchName" value="cardComponent" />
+                    <option name="lastUsedInstant" value="1697786881" />
+                  </RecentBranch>
                   <RecentBranch>
                     <option name="branchName" value="modalComponent" />
                     <option name="lastUsedInstant" value="1697528346" />
@@ -53,7 +66,7 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "Merging modalComponent",
+    "git-widget-placeholder": "cardComponent",
     "ignore.virus.scanning.warn.message": "true",
     "last_opened_file_path": "C:/Users/armen/Desktop/todoSvelte",
     "node.js.detected.package.eslint": "true",
@@ -72,7 +85,7 @@
       <recent name="C:\Users\armen\Desktop\todoSvelte\svelteTodo" />
     </key>
   </component>
-  <component name="RunManager" selected="npm.build">
+  <component name="RunManager" selected="npm.dev">
     <configuration name="build" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
       <package-json value="$PROJECT_DIR$/package.json" />
       <command value="run" />
@@ -95,8 +108,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="npm.build" />
         <item itemvalue="npm.dev" />
+        <item itemvalue="npm.build" />
       </list>
     </recent_temporary>
   </component>
@@ -113,11 +126,37 @@
       <workItem from="1697499935750" duration="608000" />
       <workItem from="1697523176045" duration="828000" />
       <workItem from="1697525276813" duration="852000" />
-      <workItem from="1697527875452" duration="3240000" />
+      <workItem from="1697527875452" duration="3324000" />
+      <workItem from="1697782752425" duration="1309000" />
+      <workItem from="1697784506488" duration="313000" />
+      <workItem from="1697784837253" duration="6582000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="HEAD" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
 </project>

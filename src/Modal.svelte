@@ -1,27 +1,16 @@
 <script>
-    import {createEventDispatcher} from "svelte";
-    const dispatch = createEventDispatcher()
-
-    export let title;
-    export let description;
-
-
-    const formSubmit = () => {
-        const formValues = {
-            totTitle: title,
-            todoDescription: description,
-            id:Math.random()
-        }
-        dispatch('addTodo', formValues)
-    }
+    export let showModal;
 </script>
-
-<form>
-    <input type="text" placeholder="Todo Title" bind:value={title}>
-    <input type="text" placeholder="Todo Description" bind:value={description}>
-    <button on:click|preventDefault on:click={formSubmit}>Add Todo Item</button>
-</form>
-
+{#if showModal}
+    <div class="todoForm--backDrop" on:click|self>
+        <slot></slot>
+    </div>
+{/if}
 <style>
-
+    .todoForm--backDrop {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        background: #000000cc;
+    }
 </style>
