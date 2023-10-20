@@ -1,12 +1,12 @@
 <script>
     import {createEventDispatcher} from "svelte";
     const dispatch = createEventDispatcher()
-    export let title;
-    export let description;
+    export let todoTitle;
+    export let todoDescription;
     const formSubmit = () => {
         const formValues = {
-            todoTitle: title,
-            todoDescription: description,
+            todoTitle,
+            todoDescription,
             id: Math.random()
         }
         dispatch('addTodo', formValues)
@@ -14,9 +14,9 @@
 </script>
 
 <form class="todoForm" on:submit|preventDefault={formSubmit}>
-    <input class="todoForm__titleInput" type="text" placeholder="Todo Title" bind:value={title}>
+    <input class="todoForm__titleInput" type="text" placeholder="Todo Title" bind:value={todoTitle}>
     <input class="todoForm__descriptionInput" type="text" placeholder="Todo Description"
-           bind:value={description}>
+           bind:value={todoDescription}>
     <button class="todoForm__submitBtn">Add Todo Item</button>
 </form>
 
