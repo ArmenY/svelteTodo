@@ -79,6 +79,12 @@ var app = (function () {
         }
         return -1;
     }
+
+    const globals = (typeof window !== 'undefined'
+        ? window
+        : typeof globalThis !== 'undefined'
+            ? globalThis
+            : global);
     function append(target, node) {
         target.appendChild(node);
     }
@@ -200,6 +206,9 @@ var app = (function () {
     }
     function add_render_callback(fn) {
         render_callbacks.push(fn);
+    }
+    function add_flush_callback(fn) {
+        flush_callbacks.push(fn);
     }
     // flush() calls callbacks in this order:
     // 1. All beforeUpdate callbacks, in order: parents before children
@@ -329,6 +338,107 @@ var app = (function () {
         }
         else if (callback) {
             callback();
+        }
+    }
+
+    function destroy_block(block, lookup) {
+        block.d(1);
+        lookup.delete(block.key);
+    }
+    function update_keyed_each(old_blocks, dirty, get_key, dynamic, ctx, list, lookup, node, destroy, create_each_block, next, get_context) {
+        let o = old_blocks.length;
+        let n = list.length;
+        let i = o;
+        const old_indexes = {};
+        while (i--)
+            old_indexes[old_blocks[i].key] = i;
+        const new_blocks = [];
+        const new_lookup = new Map();
+        const deltas = new Map();
+        const updates = [];
+        i = n;
+        while (i--) {
+            const child_ctx = get_context(ctx, list, i);
+            const key = get_key(child_ctx);
+            let block = lookup.get(key);
+            if (!block) {
+                block = create_each_block(key, child_ctx);
+                block.c();
+            }
+            else if (dynamic) {
+                // defer updates until all the DOM shuffling is done
+                updates.push(() => block.p(child_ctx, dirty));
+            }
+            new_lookup.set(key, new_blocks[i] = block);
+            if (key in old_indexes)
+                deltas.set(key, Math.abs(i - old_indexes[key]));
+        }
+        const will_move = new Set();
+        const did_move = new Set();
+        function insert(block) {
+            transition_in(block, 1);
+            block.m(node, next);
+            lookup.set(block.key, block);
+            next = block.first;
+            n--;
+        }
+        while (o && n) {
+            const new_block = new_blocks[n - 1];
+            const old_block = old_blocks[o - 1];
+            const new_key = new_block.key;
+            const old_key = old_block.key;
+            if (new_block === old_block) {
+                // do nothing
+                next = new_block.first;
+                o--;
+                n--;
+            }
+            else if (!new_lookup.has(old_key)) {
+                // remove old block
+                destroy(old_block, lookup);
+                o--;
+            }
+            else if (!lookup.has(new_key) || will_move.has(new_key)) {
+                insert(new_block);
+            }
+            else if (did_move.has(old_key)) {
+                o--;
+            }
+            else if (deltas.get(new_key) > deltas.get(old_key)) {
+                did_move.add(new_key);
+                insert(new_block);
+            }
+            else {
+                will_move.add(old_key);
+                o--;
+            }
+        }
+        while (o--) {
+            const old_block = old_blocks[o];
+            if (!new_lookup.has(old_block.key))
+                destroy(old_block, lookup);
+        }
+        while (n)
+            insert(new_blocks[n - 1]);
+        run_all(updates);
+        return new_blocks;
+    }
+    function validate_each_keys(ctx, list, get_context, get_key) {
+        const keys = new Set();
+        for (let i = 0; i < list.length; i++) {
+            const key = get_key(get_context(ctx, list, i));
+            if (keys.has(key)) {
+                throw new Error('Cannot have duplicate keys in a keyed each');
+            }
+            keys.add(key);
+        }
+    }
+
+    function bind(component, name, callback) {
+        const index = component.$$.props[name];
+        if (index !== undefined) {
+            component.$$.bound[index] = callback;
+            callback(component.$$.ctx[index]);
         }
     }
     function create_component(block) {
@@ -504,6 +614,22 @@ var app = (function () {
         else
             dispatch_dev('SvelteDOMSetAttribute', { node, attribute, value });
     }
+    function set_data_dev(text, data) {
+        data = '' + data;
+        if (text.data === data)
+            return;
+        dispatch_dev('SvelteDOMSetData', { node: text, data });
+        text.data = data;
+    }
+    function validate_each_argument(arg) {
+        if (typeof arg !== 'string' && !(arg && typeof arg === 'object' && 'length' in arg)) {
+            let msg = '{#each} only iterates over array-like objects.';
+            if (typeof Symbol === 'function' && arg && Symbol.iterator in arg) {
+                msg += ' You can use a spread to convert this iterable into an array.';
+            }
+            throw new Error(msg);
+        }
+    }
     function validate_slots(name, slot, keys) {
         for (const slot_key of Object.keys(slot)) {
             if (!~keys.indexOf(slot_key)) {
@@ -536,7 +662,7 @@ var app = (function () {
     const file$3 = "src\\Modal.svelte";
 
     // (4:0) {#if showModal}
-    function create_if_block(ctx) {
+    function create_if_block$1(ctx) {
     	let div;
     	let current;
     	let mounted;
@@ -600,7 +726,7 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block.name,
+    		id: create_if_block$1.name,
     		type: "if",
     		source: "(4:0) {#if showModal}",
     		ctx
@@ -612,7 +738,7 @@ var app = (function () {
     function create_fragment$3(ctx) {
     	let if_block_anchor;
     	let current;
-    	let if_block = /*showModal*/ ctx[0] && create_if_block(ctx);
+    	let if_block = /*showModal*/ ctx[0] && create_if_block$1(ctx);
 
     	const block = {
     		c: function create() {
@@ -636,7 +762,7 @@ var app = (function () {
     						transition_in(if_block, 1);
     					}
     				} else {
-    					if_block = create_if_block(ctx);
+    					if_block = create_if_block$1(ctx);
     					if_block.c();
     					transition_in(if_block, 1);
     					if_block.m(if_block_anchor.parentNode, if_block_anchor);
@@ -740,46 +866,312 @@ var app = (function () {
 
     /* src\Card.svelte generated by Svelte v3.59.2 */
 
+    const { console: console_1 } = globals;
     const file$2 = "src\\Card.svelte";
 
-    function create_fragment$2(ctx) {
-    	let div1;
-    	let div0;
+    function get_each_context(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[3] = list[i];
+    	return child_ctx;
+    }
+
+    // (15:12) {:else}
+    function create_else_block_1(ctx) {
     	let p;
-    	let t0;
-    	let button;
 
     	const block = {
     		c: function create() {
-    			div1 = element("div");
-    			div0 = element("div");
     			p = element("p");
+    			p.textContent = "No Title";
+    			attr_dev(p, "class", "todo__title svelte-61luhy");
+    			add_location(p, file$2, 15, 16, 458);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, p, anchor);
+    		},
+    		p: noop,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(p);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_else_block_1.name,
+    		type: "else",
+    		source: "(15:12) {:else}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (13:12) {#if todoItem.todoTitle}
+    function create_if_block_1(ctx) {
+    	let p;
+    	let t_value = /*todoItem*/ ctx[3].todoTitle + "";
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			p = element("p");
+    			t = text(t_value);
+    			attr_dev(p, "class", "todo__title svelte-61luhy");
+    			add_location(p, file$2, 13, 16, 372);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, p, anchor);
+    			append_dev(p, t);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty & /*todoItems*/ 1 && t_value !== (t_value = /*todoItem*/ ctx[3].todoTitle + "")) set_data_dev(t, t_value);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(p);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_1.name,
+    		type: "if",
+    		source: "(13:12) {#if todoItem.todoTitle}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (20:12) {:else}
+    function create_else_block(ctx) {
+    	let p;
+
+    	const block = {
+    		c: function create() {
+    			p = element("p");
+    			p.textContent = "No Description";
+    			attr_dev(p, "class", "todo__cardDescription svelte-61luhy");
+    			add_location(p, file$2, 20, 16, 676);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, p, anchor);
+    		},
+    		p: noop,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(p);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_else_block.name,
+    		type: "else",
+    		source: "(20:12) {:else}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (18:12) {#if todoItem.todoDescription}
+    function create_if_block(ctx) {
+    	let p;
+    	let t_value = /*todoItem*/ ctx[3].todoDescription + "";
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			p = element("p");
+    			t = text(t_value);
+    			attr_dev(p, "class", "todo__cardDescription svelte-61luhy");
+    			add_location(p, file$2, 18, 16, 574);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, p, anchor);
+    			append_dev(p, t);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty & /*todoItems*/ 1 && t_value !== (t_value = /*todoItem*/ ctx[3].todoDescription + "")) set_data_dev(t, t_value);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(p);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block.name,
+    		type: "if",
+    		source: "(18:12) {#if todoItem.todoDescription}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (10:4) {#each todoItems as todoItem (todoItem.id)}
+    function create_each_block(key_1, ctx) {
+    	let div;
+    	let t0;
+    	let t1;
+    	let button;
+    	let t3;
+    	let mounted;
+    	let dispose;
+
+    	function select_block_type(ctx, dirty) {
+    		if (/*todoItem*/ ctx[3].todoTitle) return create_if_block_1;
+    		return create_else_block_1;
+    	}
+
+    	let current_block_type = select_block_type(ctx);
+    	let if_block0 = current_block_type(ctx);
+
+    	function select_block_type_1(ctx, dirty) {
+    		if (/*todoItem*/ ctx[3].todoDescription) return create_if_block;
+    		return create_else_block;
+    	}
+
+    	let current_block_type_1 = select_block_type_1(ctx);
+    	let if_block1 = current_block_type_1(ctx);
+
+    	function click_handler() {
+    		return /*click_handler*/ ctx[2](/*todoItem*/ ctx[3]);
+    	}
+
+    	const block = {
+    		key: key_1,
+    		first: null,
+    		c: function create() {
+    			div = element("div");
+    			if_block0.c();
     			t0 = space();
+    			if_block1.c();
+    			t1 = space();
     			button = element("button");
     			button.textContent = "Delete todo";
-    			attr_dev(p, "class", "todo__cardDescription");
-    			add_location(p, file$2, 6, 8, 96);
-    			add_location(button, file$2, 7, 8, 143);
-    			attr_dev(div0, "class", "todo__cardItem svelte-vgraia");
-    			add_location(div0, file$2, 5, 4, 58);
-    			attr_dev(div1, "class", "card__wrapper svelte-vgraia");
-    			add_location(div1, file$2, 4, 0, 25);
+    			t3 = space();
+    			attr_dev(button, "class", "card__deleteBtn svelte-61luhy");
+    			add_location(button, file$2, 22, 12, 760);
+    			attr_dev(div, "class", "todo__cardItem svelte-61luhy");
+    			add_location(div, file$2, 11, 8, 288);
+    			this.first = div;
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			if_block0.m(div, null);
+    			append_dev(div, t0);
+    			if_block1.m(div, null);
+    			append_dev(div, t1);
+    			append_dev(div, button);
+    			append_dev(div, t3);
+
+    			if (!mounted) {
+    				dispose = listen_dev(button, "click", click_handler, false, false, false, false);
+    				mounted = true;
+    			}
+    		},
+    		p: function update(new_ctx, dirty) {
+    			ctx = new_ctx;
+
+    			if (current_block_type === (current_block_type = select_block_type(ctx)) && if_block0) {
+    				if_block0.p(ctx, dirty);
+    			} else {
+    				if_block0.d(1);
+    				if_block0 = current_block_type(ctx);
+
+    				if (if_block0) {
+    					if_block0.c();
+    					if_block0.m(div, t0);
+    				}
+    			}
+
+    			if (current_block_type_1 === (current_block_type_1 = select_block_type_1(ctx)) && if_block1) {
+    				if_block1.p(ctx, dirty);
+    			} else {
+    				if_block1.d(1);
+    				if_block1 = current_block_type_1(ctx);
+
+    				if (if_block1) {
+    					if_block1.c();
+    					if_block1.m(div, t1);
+    				}
+    			}
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    			if_block0.d();
+    			if_block1.d();
+    			mounted = false;
+    			dispose();
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block.name,
+    		type: "each",
+    		source: "(10:4) {#each todoItems as todoItem (todoItem.id)}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment$2(ctx) {
+    	let div;
+    	let each_blocks = [];
+    	let each_1_lookup = new Map();
+    	let each_value = /*todoItems*/ ctx[0];
+    	validate_each_argument(each_value);
+    	const get_key = ctx => /*todoItem*/ ctx[3].id;
+    	validate_each_keys(ctx, each_value, get_each_context, get_key);
+
+    	for (let i = 0; i < each_value.length; i += 1) {
+    		let child_ctx = get_each_context(ctx, each_value, i);
+    		let key = get_key(child_ctx);
+    		each_1_lookup.set(key, each_blocks[i] = create_each_block(key, child_ctx));
+    	}
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			attr_dev(div, "class", "card__wrapper svelte-61luhy");
+    			add_location(div, file$2, 8, 0, 200);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, div1, anchor);
-    			append_dev(div1, div0);
-    			append_dev(div0, p);
-    			append_dev(div0, t0);
-    			append_dev(div0, button);
+    			insert_dev(target, div, anchor);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				if (each_blocks[i]) {
+    					each_blocks[i].m(div, null);
+    				}
+    			}
     		},
-    		p: noop,
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*deleteTodo, todoItems*/ 3) {
+    				each_value = /*todoItems*/ ctx[0];
+    				validate_each_argument(each_value);
+    				validate_each_keys(ctx, each_value, get_each_context, get_key);
+    				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div, destroy_block, create_each_block, null, get_each_context);
+    			}
+    		},
     		i: noop,
     		o: noop,
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div1);
+    			if (detaching) detach_dev(div);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].d();
+    			}
     		}
     	};
 
@@ -794,22 +1186,45 @@ var app = (function () {
     	return block;
     }
 
-    function instance$2($$self, $$props) {
+    function instance$2($$self, $$props, $$invalidate) {
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots('Card', slots, []);
-    	const writable_props = [];
+    	let { todoItems = [] } = $$props;
+
+    	const deleteTodo = id => {
+    		$$invalidate(0, todoItems = todoItems.filter(todoItem => id !== todoItem.id));
+    		console.log(todoItems);
+    	};
+
+    	const writable_props = ['todoItems'];
 
     	Object.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console.warn(`<Card> was created with unknown prop '${key}'`);
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console_1.warn(`<Card> was created with unknown prop '${key}'`);
     	});
 
-    	return [];
+    	const click_handler = todoItem => deleteTodo(todoItem.id);
+
+    	$$self.$$set = $$props => {
+    		if ('todoItems' in $$props) $$invalidate(0, todoItems = $$props.todoItems);
+    	};
+
+    	$$self.$capture_state = () => ({ todoItems, deleteTodo });
+
+    	$$self.$inject_state = $$props => {
+    		if ('todoItems' in $$props) $$invalidate(0, todoItems = $$props.todoItems);
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	return [todoItems, deleteTodo, click_handler];
     }
 
     class Card extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$2, create_fragment$2, safe_not_equal, {});
+    		init(this, options, instance$2, create_fragment$2, safe_not_equal, { todoItems: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
@@ -817,6 +1232,14 @@ var app = (function () {
     			options,
     			id: create_fragment$2.name
     		});
+    	}
+
+    	get todoItems() {
+    		throw new Error("<Card>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set todoItems(value) {
+    		throw new Error("<Card>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
 
@@ -845,15 +1268,15 @@ var app = (function () {
     			attr_dev(input0, "class", "todoForm__titleInput svelte-15i5amn");
     			attr_dev(input0, "type", "text");
     			attr_dev(input0, "placeholder", "Todo Title");
-    			add_location(input0, file$1, 16, 4, 465);
+    			add_location(input0, file$1, 16, 4, 453);
     			attr_dev(input1, "class", "todoForm__descriptionInput svelte-15i5amn");
     			attr_dev(input1, "type", "text");
     			attr_dev(input1, "placeholder", "Todo Description");
-    			add_location(input1, file$1, 17, 4, 563);
+    			add_location(input1, file$1, 17, 4, 555);
     			attr_dev(button, "class", "todoForm__submitBtn svelte-15i5amn");
-    			add_location(button, file$1, 19, 4, 691);
+    			add_location(button, file$1, 19, 4, 687);
     			attr_dev(form, "class", "todoForm svelte-15i5amn");
-    			add_location(form, file$1, 15, 0, 398);
+    			add_location(form, file$1, 15, 0, 386);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -861,10 +1284,10 @@ var app = (function () {
     		m: function mount(target, anchor) {
     			insert_dev(target, form, anchor);
     			append_dev(form, input0);
-    			set_input_value(input0, /*title*/ ctx[0]);
+    			set_input_value(input0, /*todoTitle*/ ctx[0]);
     			append_dev(form, t0);
     			append_dev(form, input1);
-    			set_input_value(input1, /*description*/ ctx[1]);
+    			set_input_value(input1, /*todoDescription*/ ctx[1]);
     			append_dev(form, t1);
     			append_dev(form, button);
 
@@ -879,12 +1302,12 @@ var app = (function () {
     			}
     		},
     		p: function update(ctx, [dirty]) {
-    			if (dirty & /*title*/ 1 && input0.value !== /*title*/ ctx[0]) {
-    				set_input_value(input0, /*title*/ ctx[0]);
+    			if (dirty & /*todoTitle*/ 1 && input0.value !== /*todoTitle*/ ctx[0]) {
+    				set_input_value(input0, /*todoTitle*/ ctx[0]);
     			}
 
-    			if (dirty & /*description*/ 2 && input1.value !== /*description*/ ctx[1]) {
-    				set_input_value(input1, /*description*/ ctx[1]);
+    			if (dirty & /*todoDescription*/ 2 && input1.value !== /*todoDescription*/ ctx[1]) {
+    				set_input_value(input1, /*todoDescription*/ ctx[1]);
     			}
     		},
     		i: noop,
@@ -911,13 +1334,13 @@ var app = (function () {
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots('TodoForm', slots, []);
     	const dispatch = createEventDispatcher();
-    	let { title } = $$props;
-    	let { description } = $$props;
+    	let { todoTitle } = $$props;
+    	let { todoDescription } = $$props;
 
     	const formSubmit = () => {
     		const formValues = {
-    			todoTitle: title,
-    			todoDescription: description,
+    			todoTitle,
+    			todoDescription,
     			id: Math.random()
     		};
 
@@ -925,60 +1348,66 @@ var app = (function () {
     	};
 
     	$$self.$$.on_mount.push(function () {
-    		if (title === undefined && !('title' in $$props || $$self.$$.bound[$$self.$$.props['title']])) {
-    			console.warn("<TodoForm> was created without expected prop 'title'");
+    		if (todoTitle === undefined && !('todoTitle' in $$props || $$self.$$.bound[$$self.$$.props['todoTitle']])) {
+    			console.warn("<TodoForm> was created without expected prop 'todoTitle'");
     		}
 
-    		if (description === undefined && !('description' in $$props || $$self.$$.bound[$$self.$$.props['description']])) {
-    			console.warn("<TodoForm> was created without expected prop 'description'");
+    		if (todoDescription === undefined && !('todoDescription' in $$props || $$self.$$.bound[$$self.$$.props['todoDescription']])) {
+    			console.warn("<TodoForm> was created without expected prop 'todoDescription'");
     		}
     	});
 
-    	const writable_props = ['title', 'description'];
+    	const writable_props = ['todoTitle', 'todoDescription'];
 
     	Object.keys($$props).forEach(key => {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console.warn(`<TodoForm> was created with unknown prop '${key}'`);
     	});
 
     	function input0_input_handler() {
-    		title = this.value;
-    		$$invalidate(0, title);
+    		todoTitle = this.value;
+    		$$invalidate(0, todoTitle);
     	}
 
     	function input1_input_handler() {
-    		description = this.value;
-    		$$invalidate(1, description);
+    		todoDescription = this.value;
+    		$$invalidate(1, todoDescription);
     	}
 
     	$$self.$$set = $$props => {
-    		if ('title' in $$props) $$invalidate(0, title = $$props.title);
-    		if ('description' in $$props) $$invalidate(1, description = $$props.description);
+    		if ('todoTitle' in $$props) $$invalidate(0, todoTitle = $$props.todoTitle);
+    		if ('todoDescription' in $$props) $$invalidate(1, todoDescription = $$props.todoDescription);
     	};
 
     	$$self.$capture_state = () => ({
     		createEventDispatcher,
     		dispatch,
-    		title,
-    		description,
+    		todoTitle,
+    		todoDescription,
     		formSubmit
     	});
 
     	$$self.$inject_state = $$props => {
-    		if ('title' in $$props) $$invalidate(0, title = $$props.title);
-    		if ('description' in $$props) $$invalidate(1, description = $$props.description);
+    		if ('todoTitle' in $$props) $$invalidate(0, todoTitle = $$props.todoTitle);
+    		if ('todoDescription' in $$props) $$invalidate(1, todoDescription = $$props.todoDescription);
     	};
 
     	if ($$props && "$$inject" in $$props) {
     		$$self.$inject_state($$props.$$inject);
     	}
 
-    	return [title, description, formSubmit, input0_input_handler, input1_input_handler];
+    	return [
+    		todoTitle,
+    		todoDescription,
+    		formSubmit,
+    		input0_input_handler,
+    		input1_input_handler
+    	];
     }
 
     class TodoForm extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$1, create_fragment$1, safe_not_equal, { title: 0, description: 1 });
+    		init(this, options, instance$1, create_fragment$1, safe_not_equal, { todoTitle: 0, todoDescription: 1 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
@@ -988,19 +1417,19 @@ var app = (function () {
     		});
     	}
 
-    	get title() {
+    	get todoTitle() {
     		throw new Error("<TodoForm>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
-    	set title(value) {
+    	set todoTitle(value) {
     		throw new Error("<TodoForm>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
-    	get description() {
+    	get todoDescription() {
     		throw new Error("<TodoForm>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
-    	set description(value) {
+    	set todoDescription(value) {
     		throw new Error("<TodoForm>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
@@ -1013,8 +1442,8 @@ var app = (function () {
     	let todoform;
     	let current;
     	todoform = new TodoForm({ $$inline: true });
-    	todoform.$on("addTodo", /*addTodo*/ ctx[2]);
-    	todoform.$on("click", /*toggleModal*/ ctx[1]);
+    	todoform.$on("addTodo", /*addTodo*/ ctx[3]);
+    	todoform.$on("click", /*toggleModal*/ ctx[2]);
 
     	const block = {
     		c: function create() {
@@ -1060,21 +1489,34 @@ var app = (function () {
     	let button;
     	let t4;
     	let card;
+    	let updating_todoItems;
     	let current;
     	let mounted;
     	let dispose;
 
     	modal = new Modal({
     			props: {
-    				showModal: /*showModal*/ ctx[0],
+    				showModal: /*showModal*/ ctx[1],
     				$$slots: { default: [create_default_slot] },
     				$$scope: { ctx }
     			},
     			$$inline: true
     		});
 
-    	modal.$on("click", /*toggleModal*/ ctx[1]);
-    	card = new Card({ $$inline: true });
+    	modal.$on("click", /*toggleModal*/ ctx[2]);
+
+    	function card_todoItems_binding(value) {
+    		/*card_todoItems_binding*/ ctx[4](value);
+    	}
+
+    	let card_props = {};
+
+    	if (/*todoItems*/ ctx[0] !== void 0) {
+    		card_props.todoItems = /*todoItems*/ ctx[0];
+    	}
+
+    	card = new Card({ props: card_props, $$inline: true });
+    	binding_callbacks.push(() => bind(card, 'todoItems', card_todoItems_binding));
 
     	const block = {
     		c: function create() {
@@ -1086,15 +1528,15 @@ var app = (function () {
     			h1.textContent = "Your Todo List";
     			t2 = space();
     			button = element("button");
-    			button.textContent = "Add ToDo";
+    			button.textContent = "Create New ToDo";
     			t4 = space();
     			create_component(card.$$.fragment);
-    			attr_dev(h1, "class", "todo__title svelte-1usjya1");
-    			add_location(h1, file, 23, 8, 584);
-    			add_location(button, file, 24, 8, 637);
-    			attr_dev(div, "class", "todo__wrapper svelte-1usjya1");
-    			add_location(div, file, 22, 4, 547);
-    			add_location(main, file, 21, 0, 535);
+    			attr_dev(h1, "class", "todo__heading svelte-5g5k24");
+    			add_location(h1, file, 23, 8, 569);
+    			add_location(button, file, 24, 8, 623);
+    			attr_dev(div, "class", "todo__wrapper svelte-5g5k24");
+    			add_location(div, file, 22, 4, 533);
+    			add_location(main, file, 21, 0, 522);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -1107,24 +1549,33 @@ var app = (function () {
     			append_dev(div, h1);
     			append_dev(div, t2);
     			append_dev(div, button);
-    			append_dev(div, t4);
-    			mount_component(card, div, null);
+    			append_dev(main, t4);
+    			mount_component(card, main, null);
     			current = true;
 
     			if (!mounted) {
-    				dispose = listen_dev(button, "click", /*toggleModal*/ ctx[1], false, false, false, false);
+    				dispose = listen_dev(button, "click", /*toggleModal*/ ctx[2], false, false, false, false);
     				mounted = true;
     			}
     		},
     		p: function update(ctx, [dirty]) {
     			const modal_changes = {};
-    			if (dirty & /*showModal*/ 1) modal_changes.showModal = /*showModal*/ ctx[0];
+    			if (dirty & /*showModal*/ 2) modal_changes.showModal = /*showModal*/ ctx[1];
 
-    			if (dirty & /*$$scope*/ 16) {
+    			if (dirty & /*$$scope*/ 32) {
     				modal_changes.$$scope = { dirty, ctx };
     			}
 
     			modal.$set(modal_changes);
+    			const card_changes = {};
+
+    			if (!updating_todoItems && dirty & /*todoItems*/ 1) {
+    				updating_todoItems = true;
+    				card_changes.todoItems = /*todoItems*/ ctx[0];
+    				add_flush_callback(() => updating_todoItems = false);
+    			}
+
+    			card.$set(card_changes);
     		},
     		i: function intro(local) {
     			if (current) return;
@@ -1161,51 +1612,61 @@ var app = (function () {
     function instance($$self, $$props, $$invalidate) {
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots('App', slots, []);
-    	let todoItems = [];
     	let showModal = false;
 
     	const toggleModal = () => {
-    		$$invalidate(0, showModal = !showModal);
+    		$$invalidate(1, showModal = !showModal);
     	};
+
+    	let { todoItems = [] } = $$props;
 
     	const addTodo = e => {
     		let todoItem = e.detail;
-    		todoItems = [todoItem, ...todoItems];
-    		$$invalidate(0, showModal = false);
+    		$$invalidate(0, todoItems = [todoItem, ...todoItems]);
+    		$$invalidate(1, showModal = false);
     	};
 
-    	const writable_props = [];
+    	const writable_props = ['todoItems'];
 
     	Object.keys($$props).forEach(key => {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console.warn(`<App> was created with unknown prop '${key}'`);
     	});
 
+    	function card_todoItems_binding(value) {
+    		todoItems = value;
+    		$$invalidate(0, todoItems);
+    	}
+
+    	$$self.$$set = $$props => {
+    		if ('todoItems' in $$props) $$invalidate(0, todoItems = $$props.todoItems);
+    	};
+
     	$$self.$capture_state = () => ({
     		Modal,
     		Card,
     		TodoForm,
-    		todoItems,
     		showModal,
     		toggleModal,
+    		todoItems,
     		addTodo
     	});
 
     	$$self.$inject_state = $$props => {
-    		if ('todoItems' in $$props) todoItems = $$props.todoItems;
-    		if ('showModal' in $$props) $$invalidate(0, showModal = $$props.showModal);
+    		if ('showModal' in $$props) $$invalidate(1, showModal = $$props.showModal);
+    		if ('todoItems' in $$props) $$invalidate(0, todoItems = $$props.todoItems);
     	};
 
     	if ($$props && "$$inject" in $$props) {
     		$$self.$inject_state($$props.$$inject);
     	}
 
-    	return [showModal, toggleModal, addTodo];
+    	return [todoItems, showModal, toggleModal, addTodo, card_todoItems_binding];
     }
 
     class App extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance, create_fragment, safe_not_equal, {});
+    		init(this, options, instance, create_fragment, safe_not_equal, { todoItems: 0 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
@@ -1213,6 +1674,14 @@ var app = (function () {
     			options,
     			id: create_fragment.name
     		});
+    	}
+
+    	get todoItems() {
+    		throw new Error("<App>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set todoItems(value) {
+    		throw new Error("<App>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
 
