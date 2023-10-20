@@ -705,18 +705,18 @@ var app = (function () {
     			button1 = element("button");
     			button1.textContent = "Delete todo";
     			attr_dev(h1, "class", "todo__title svelte-1ueqkl1");
-    			add_location(h1, file, 7, 8, 116);
-    			add_location(button0, file, 8, 8, 168);
+    			add_location(h1, file, 7, 8, 123);
+    			add_location(button0, file, 8, 8, 176);
     			attr_dev(p, "class", "todo__cardDescription");
-    			add_location(p, file, 11, 24, 303);
-    			add_location(button1, file, 12, 20, 361);
+    			add_location(p, file, 11, 24, 314);
+    			add_location(button1, file, 12, 20, 373);
     			attr_dev(div0, "class", "todo__cardItem svelte-1ueqkl1");
-    			add_location(div0, file, 10, 16, 250);
+    			add_location(div0, file, 10, 16, 260);
     			attr_dev(div1, "class", "card__wrapper svelte-1ueqkl1");
-    			add_location(div1, file, 9, 12, 206);
+    			add_location(div1, file, 9, 12, 215);
     			attr_dev(div2, "class", "todo__wrapper svelte-1ueqkl1");
-    			add_location(div2, file, 6, 4, 80);
-    			add_location(main, file, 5, 0, 69);
+    			add_location(div2, file, 6, 4, 86);
+    			add_location(main, file, 5, 0, 74);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
