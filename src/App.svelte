@@ -1,5 +1,8 @@
-<script></script>
+<script>
+    import Modal from "./Modal.svelte";
+</script>
 
+<Modal/>
 <main>
     <div class="todo__wrapper">
         <h1 class="todo__title">Your Todo List</h1>
