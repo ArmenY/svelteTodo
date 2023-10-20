@@ -1,18 +1,29 @@
 <script>
     import Modal from "./Modal.svelte";
+    import Card from "./Card.svelte";
+    import TodoForm from "./TodoForm.svelte";
+    let todoItems = [];
+
+    let showModal = false
+    const toggleModal = ()=> {
+        showModal = !showModal
+    }
+    const addTodo = (e) => {
+        let todoItem = e.detail
+        todoItems = [todoItem, ...todoItems]
+        showModal = false
+
+    }
 </script>
 
-<Modal/>
+<Modal {showModal} on:click={toggleModal}>
+    <TodoForm on:addTodo={addTodo} on:click={toggleModal}/>
+</Modal>
 <main>
     <div class="todo__wrapper">
         <h1 class="todo__title">Your Todo List</h1>
-        <button>Add ToDo</button>
-            <div class="card__wrapper">
-                <div class="todo__cardItem">
-                        <p class="todo__cardDescription"></p>
-                    <button>Delete todo</button>
-                </div>
-            </div>
+        <button on:click={toggleModal}>Add ToDo</button>
+        <Card/>
     </div>
 </main>
 
@@ -23,24 +34,12 @@
     }
 
     .todo__wrapper {
-        width: 100%;
-        height: 100%;
+        width: 100vw;
+        height: 100vh;
         background: #e4b45c;
     }
 
     .todo__title {
         text-align: center;
-    }
-
-    .card__wrapper {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .todo__cardItem {
-        padding: 30px;
-        border: 1px solid green;
-        border-radius: 4px;
     }
 </style>
